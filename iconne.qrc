@@ -1,0 +1,27 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>icone\client.png</file>
+    <file>icone\product.png</file>
+    <file>icone\report.png</file>
+    <file>icone\param.png</file>
+    <file>icone\historique.png</file>
+    <file>icone\vente.png</file>
+    <file>icone\add.png</file>
+    <file>icone\annuler.png</file>
+    <file>icone\delete.png</file>
+    <file>icone\export.png</file>
+    <file>icone\land-sell-icon.png</file>
+    <file>icone\pay.png</file>
+    <file>icone\paypay.png</file>
+    <file>icone\save.png</file>
+    <file>icone\searche.png</file>
+    <file>icone\update.png</file>
+    <file>icone\dashboard.png</file>
+    <file>icone\login.png</file>
+    <file>icone\sign.png</file>
+    <file>icone\barre.png</file>
+    <file>icone\stock.png</file>
+    <file>icone\imprimer.png</file>
+    <file>icone\reset.png</file>
+</qresource>
+</RCC>
