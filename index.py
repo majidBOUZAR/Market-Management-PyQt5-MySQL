@@ -3,33 +3,35 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.uic import loadUiType
 from PyQt5 import uic,QtWidgets
-import sys,datetime,random, mysql.connector
+import sys,datetime,random, mysql.connector,time ,cv2,barcode,threading
 from barcode import *
 from barcode.writer import *
 import barcode
-from barcode import EAN13
-import datetime,random
-import cv2
-import time
 from pyzbar.pyzbar import decode
 from index2 import *
+from login import *
+import pyqtgraph as pg
+from xlsxwriter import *
+from xlrd import *
 
 MainUI,_=loadUiType('des_v2.ui')
 
-COLUMN = 2
-
-
+userid =  0
 class main(QMainWindow,MainUI):################ handle interface
-    
+        
     def ok_button(self):### call window of payement 
-        
-        self.pushButton_13.clicked.connect(self.calcul)
-        self.w = Window2()
-        self.w.show()
-        self.w.pushButton_13.clicked.connect(self.vente)
-        self.w.pushButton_14.clicked.connect(self.annuler_payment)
-   
-        
+        if self.tableWidget.rowCount() == 0 :
+            QMessageBox.information(self ,"information" , "table deja vide")
+        else :  
+            self.pushButton_13.clicked.connect(self.calcul)
+            self.w = Window2()
+            self.w.show()
+         
+            self.w.pushButton_13.clicked.connect(self.vente)
+            self.w.pushButton_13.clicked.connect(self.recette)
+            self.w.pushButton_14.clicked.connect(self.annuler_payment)
+    
+
     def __init__(self, parent=None):
         super(main, self).__init__(parent) # Call the inherited classes __init__ method
         QMainWindow.__init__(self)
@@ -45,6 +47,9 @@ class main(QMainWindow,MainUI):################ handle interface
         self.show_users()
         self.historique()
         self.total()
+        self.show_historique()
+        self.dashboard()
+        self.display_recette()
         
     def ui_change(self) :
     #UI changes in login
@@ -63,52 +68,57 @@ class main(QMainWindow,MainUI):################ handle interface
 
 ################ connect les button avec tab widgetS
     def handle_button(self) :
-     self.pushButton_25.clicked.connect(self.open_login_tab)#connect button with tab widget
-     self.pushButton.clicked.connect(self.open_vente_tab)
-     self.pushButton_2.clicked.connect(self.open_produit_tab)
-     self.pushButton_3.clicked.connect(self.open_client_tab)
-     self.pushButton_4.clicked.connect(self.open_dashboard_tab)
-     self.pushButton_5.clicked.connect(self.open_report_tab)
-     self.pushButton_6.clicked.connect(self.open_parametre_tab)
-     self.pushButton_19.clicked.connect(self.open_historique_tab)
-     self.pushButton_23.clicked.connect(self.ajouter_categorie)
-     self.pushButton_9.clicked.connect(self.ajouter_produit)
-     self.pushButton_9.clicked.connect(self.show_produit)
-     self.pushButton_11.clicked.connect(self.show_produit)
-     self.pushButton_10.clicked.connect(self.show_produit)
-     self.checkBox.stateChanged.connect(self.generate_barcode)
-     self.pushButton_12.clicked.connect(self.search_produit)
-     self.pushButton_13.clicked.connect(self.show_produit)
-     self.pushButton_28.clicked.connect(self.clear_all)
-     self.pushButton_11.clicked.connect(self.modifie_produit)
-     self.pushButton_10.clicked.connect(self.supprimer_produit)
-     self.pushButton_29.clicked.connect(self.rechechre_stock)
-     self.lineEdit_2.textChanged.connect(self.search_produit_nom)
-     self.lineEdit_5.textChanged.connect(self.search_produit_code)
-     self.lineEdit_8.textChanged.connect(self.search_produit_categorie)
-     #self.lineEdit_5.textChanged.connect(self.searrech_produit)
-     self.pushButton_49.clicked.connect(self.employe)
-     self.pushButton_34.clicked.connect(self.supprimer_row)
-     self.pushButton_7.clicked.connect(self.copy_row)
-     self.pushButton_14.clicked.connect(self.annuler_payment)
-     self.pushButton_40.clicked.connect(self.verifier_user)
-     self.pushButton_35.clicked.connect(self.modifier_users)
-     self.pushButton_32.clicked.connect(self.BarcodeReader)
-     self.pushButton_8.clicked.connect(self.show_produit)
-     #self.pushButton_13.clicked.connect(self.handle_item_changed)
-     self.tableWidget.itemChanged.connect(self.calcul)
-     self.pushButton_13.clicked.connect(self.calcul)
-     #self.pushButton_13.clicked.connect(self.vente)
-     self.pushButton_13.clicked.connect(self.ok_button)
-     self.tableWidget_6.itemPressed.connect(self.copy_row)
-     #self.tableWidget.itemPressed.connect(self.ok_button)
-     self.lineEdit_3.textChanged.connect(self.rechechre_stock)   
-     self.lineEdit.textChanged.connect(self.search_insert_by_code)   
-     self.doubleSpinBox.valueChanged.connect(self.teaux)   
-     self.doubleSpinBox_2.valueChanged.connect(self.teaux)   
-     self.pushButton_36.clicked.connect(self.permission)
-     ###########self.pushButton_27.clicked.connect(self.user_login)
-     #self.checkBox_28.stateChanged.connect(self.droi_admine_true)
+        self.pushButton_25.clicked.connect(self.open_login_tab)#connect button with tab widget
+        self.pushButton.clicked.connect(self.open_vente_tab)
+        self.pushButton_2.clicked.connect(self.open_produit_tab)
+        self.pushButton_3.clicked.connect(self.open_client_tab)
+        self.pushButton_4.clicked.connect(self.open_dashboard_tab)
+        self.pushButton_5.clicked.connect(self.open_report_tab)
+        self.pushButton_6.clicked.connect(self.open_parametre_tab)
+        self.pushButton_19.clicked.connect(self.open_historique_tab)
+        self.pushButton_23.clicked.connect(self.ajouter_categorie)
+        self.pushButton_38.clicked.connect(self.delete_category)
+        self.pushButton_9.clicked.connect(self.ajouter_produit)
+        
+        self.pushButton_33.clicked.connect(self.export_data)
+        
+        
+        self.checkBox.stateChanged.connect(self.generate_barcode)
+        self.pushButton_12.clicked.connect(self.search_produit)
+    
+        
+        self.pushButton_28.clicked.connect(self.clear_all)
+        self.pushButton_11.clicked.connect(self.modifie_produit)
+        self.pushButton_10.clicked.connect(self.supprimer_produit)
+        self.pushButton_29.clicked.connect(self.rechechre_stock)
+        self.lineEdit_2.textChanged.connect(self.filter)
+        #self.lineEdit_5.textChanged.connect(self.searrech_produit)
+        self.pushButton_49.clicked.connect(self.employe)
+        self.pushButton_34.clicked.connect(self.supprimer_row)
+        self.pushButton_7.clicked.connect(self.copy_row)
+        self.pushButton_14.clicked.connect(self.annuler_payment)
+        self.pushButton_40.clicked.connect(self.verifier_user)
+        self.pushButton_35.clicked.connect(self.modifier_users)
+        self.pushButton_32.clicked.connect(self.BarcodeReader)
+        self.pushButton_37.clicked.connect(self.BarcodeReader_product)
+        #self.pushButton_13.clicked.connect(self.handle_item_changed)
+        self.tableWidget.itemChanged.connect(self.calcul)
+        self.pushButton_13.clicked.connect(self.calcul)
+        #self.pushButton_13.clicked.connect(self.vente)
+        self.pushButton_13.clicked.connect(self.ok_button)
+        self.tableWidget_6.itemPressed.connect(self.copy_row)
+        #self.tableWidget.itemPressed.connect(self.ok_button)
+        self.lineEdit_3.textChanged.connect(self.rechechre_stock)   
+        self.lineEdit.textChanged.connect(self.search_insert_by_code)   
+        self.doubleSpinBox.valueChanged.connect(self.teaux)   
+        self.doubleSpinBox_2.valueChanged.connect(self.teaux)   
+        self.pushButton_36.clicked.connect(self.permission)
+        self.pushButton_27.clicked.connect(self.user_login)
+        self.pushButton_sup_his.clicked.connect(self.delete_historique)
+        self.comboBox_cat.currentTextChanged.connect(self.display_category_lineedit)
+        self.pushButton_39.clicked.connect(self.update_category)
+        self.pushButton_45.clicked.connect(self.toggleFullScreen)
+        #self.checkBox_28.stateChanged.connect(self.droi_admine_true)
      
      
      
@@ -139,63 +149,48 @@ class main(QMainWindow,MainUI):################ handle interface
     def open_historique_tab(self) :
         self.tabWidget.setCurrentIndex(7)            
                     
-    
+############################# read barcode whene click button ################################     
     def BarcodeReader(self):
-        
+
         vid = cv2.VideoCapture(1)
         camera = True
-        used =[]
-
         while camera == True :
             
             success, img = vid.read()
             detectedBarcodes = decode(img)
-            
+            print('scanner barcode is open')
             for barcode in detectedBarcodes:
                 print('aprouved')
                 print(str(barcode.data))
-                time.sleep(5)
+                time.sleep(0.5)
                 st=str(int(barcode.data))
                 self.lineEdit.setText(st[0:11])
                 break
-                
- ##############################  function query set     
-    def ajouter_categorie(self) :   ############################"
-       category_name = self.lineEdit_21.text()
-       if len(category_name):
-        self.cur.execute('''
-            INSERT INTO category (category_name)
-            VALUES (%s )
-         ''' , (category_name,))
-       
-       self.db.commit()      
-       self.lineEdit_19.clear()
-       QMessageBox.information(self,'succes','Categorie a été bien ajouter')
-       print('categorie success added')
-       
-    def show_categorie(self) :  ############################
-        
-        all = self.cur.execute(''' SELECT category_name from category''')#select all data 
-        data = self.cur.fetchall()#return all data    
-        for category in data :
-         self.comboBox_5.addItem(str(category[0]))
-         self.comboBox_3.addItem(str(category[0]))
-         
-    def show_produit(self):
-        
-        self.cur.execute(''' SELECT code,nom,prix_achat,prix_vente,quantite,details,categorie,Teaux from produit''')
-        data=self.cur.fetchall()
-         
-        for row , form in enumerate(data):
-            self.tableWidget_2.insertRow(row)
-            for col , item in enumerate(form):
-                self.tableWidget_2.setItem(row,col, QTableWidgetItem(str(item)))
-                col = col + 1
-               
+            QApplication.processEvents() # solution not responding    
 
+    def BarcodeReader_product(self):    
+        self.checkBox.setEnabled (False)
+        self.lineEdit_7.setEnabled (False)    
+        
+        vid = cv2.VideoCapture(1)
+        camera = True
+        
+        while camera == True :
             
-    def generate_barcode(self):
+            success, img = vid.read()
+            detectedBarcodes = decode(img)
+            print('scanner barcode 22 is open')
+            for barcode in detectedBarcodes:
 
+                time.sleep(0.5)
+                st=str(int(barcode.data))
+                self.lineEdit_7.setText(st[0:11])
+                break
+            QApplication.processEvents() # solution of not responding (Threding)        
+    
+    def generate_barcode(self):
+       ## t = threading.Thread(target=self.log)
+       ## t.start()
        ##### generate code
         nom=self.lineEdit_4.text()
         prix=self.doubleSpinBox_2.value()
@@ -208,33 +203,141 @@ class main(QMainWindow,MainUI):################ handle interface
         print(nom)
         self.lineEdit_7.setText(number)  
         print("code checked") 
-#        QMessageBox.information(self,'Information','This code barre deja exister dans ton repertoire')   
+           
+#        QMessageBox.information(self,'Information','This code barre deja exister dans ton repertoire')  
+ 
+ ##############################  function query set of catrgory ############################### 
+    def ajouter_categorie(self) :   ############################"
+       category_name = self.lineEdit_21.text()
+       if len(category_name):
+        self.cur.execute('''
+            INSERT INTO category (category_name)
+            VALUES (%s )
+         ''' , (category_name,))
+       
+       
+        global userid
+        action = 3
+        table = 2
+        
+        dat3 = datetime.datetime.utcnow()
+        
+        self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+            VALUES (%s, %s , %s, %s )
+        ''' )  , (userid,action,table,dat3))         
+    
+       
+       self.db.commit()      
+       self.lineEdit_21.clear()
+       QMessageBox.information(self,'succes','Categorie a été bien ajouter')
+       print('categorie success added')
+       self.comboBox_cat.clear()
+       self.tableWidget_4.clear()
+       self.show_historique()
+       self.show_categorie()          
+       
+    def show_categorie(self) :  ############################
+        
+            all = self.cur.execute(''' SELECT category_name from category''')#select all data 
+            data = self.cur.fetchall()#return all data    
+            for category in data :
+                
+                self.comboBox_3.addItem(str(category[0]))
+                self.comboBox_cat.addItem(category[0])
+         
+    def  delete_category(self): 
+        
+            item =self.comboBox_cat.currentText()
+            sql = (''' DELETE FROM category WHERE category_name = %s
+                    ''')
+            self.cur.execute(sql,(item,))
+            delete_message = QMessageBox.warning(self,'Attention','Categorie sera effacé', QMessageBox.Yes|QMessageBox.No) 
+            if delete_message == QMessageBox.Yes :
+                action = 5
+                table = 2
+                dat3 = datetime.datetime.utcnow()
+                self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                    VALUES (%s, %s , %s, %s )
+                ''' )  , (userid,action,table,dat3))   
+                self.db.commit()
+        
+                
+                self.comboBox_cat.clear()
+                self.tableWidget_4.clear()
+                self.show_historique()
+                self.show_categorie()
+          
+    def display_category_lineedit(self):
+        
+            item =self.comboBox_cat.currentText()
+            self.lineEdit_24.setText(item) 
+            
+    def update_category(self):    
+           
+            cat = self.lineEdit_24.text()
+            item =self.comboBox_cat.currentText()
+            print(cat)
+            self.cur.execute('''
+                    UPDATE category SET category_name = %s WHERE category_name = %s
+                ''',(cat,item))      
+            print('success updated')
+            QMessageBox.information(self,'Succes','Categorie modifié')                
+            action = 4
+            table = 2
+            dat3 = datetime.datetime.utcnow()
+            self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                    VALUES (%s, %s , %s, %s )
+                ''' )  , (userid,action,table,dat3))   
+            self.db.commit()
+        
+            self.db.commit()
+            self.lineEdit_24.clear()
+            self.comboBox_cat.clear()
+            self.tableWidget_4.clear()
+            self.show_historique()
+            self.show_categorie()
+            
+ ##############################  function query set of product ################################    
+
+         
+    def show_produit(self):
+        
+        self.cur.execute(''' SELECT code,nom,prix_achat,prix_vente,quantite,details,categorie,Teaux from produit''')
+        data=self.cur.fetchall()
+         
+        for row , form in enumerate(data):
+            self.tableWidget_2.insertRow(row)
+            for col , item in enumerate(form):
+                self.tableWidget_2.setItem(row,col, QTableWidgetItem(str(item)))
+                col = col + 1
          
     def search_produit(self):
-       nom=self.lineEdit_10.text()
-       sql = ('''
-            SELECT * FROM produit WHERE nom = %s
-        ''')   
-       self.cur.execute(sql , [(nom)])
-       value = self.cur.fetchone()
-       sql2 = ('''
-            SELECT * FROM category  
-        ''')   
-       self.cur.execute(sql2)
-       value2 = self.cur.fetchall()
-       
-       if (value)  : 
-                self.lineEdit_11.setText(value[1])
-                self.plainTextEdit_2.setPlainText(value[2])
-                self.doubleSpinBox_3.setValue(value[3])
-                self.doubleSpinBox_4.setValue(value[4])
-                self.spinBox_2.setValue(value[5])
-                self.lineEdit_12.setText(value[6])
-                self.comboBox_15.setCurrentText(value[8])
-       for x in value2 :
-            self.comboBox_15.addItem(x[1])
-            print(x[1])
-           
+        nom=self.lineEdit_10.text()
+        sql = ('''
+                SELECT * FROM produit WHERE nom = %s
+            ''')   
+        self.cur.execute(sql , [(nom)])
+        value = self.cur.fetchone()
+        sql2 = ('''
+                SELECT * FROM category  
+            ''')   
+        self.cur.execute(sql2)
+        value2 = self.cur.fetchall()
+   
+        self.db.commit()
+             
+        if (value)  : 
+                    self.lineEdit_11.setText(value[1])
+                    self.plainTextEdit_2.setPlainText(value[2])
+                    self.doubleSpinBox_3.setValue(value[3])
+                    self.doubleSpinBox_4.setValue(value[4])
+                    self.spinBox_2.setValue(value[5])
+                    self.lineEdit_12.setText(value[6])
+                    self.comboBox_15.setCurrentText(value[8])
+        for x in value2 :
+                self.comboBox_15.addItem(x[1])
+              
+            
     def clear_all(self)   :
      
        self.lineEdit_11.clear()
@@ -246,68 +349,110 @@ class main(QMainWindow,MainUI):################ handle interface
        self.lineEdit_12.clear()
        
     def ajouter_produit (self):#############################
-        
-        self.cur.execute(''' SELECT category_name from category''') #select all data 
-        data = self.cur.fetchall()#return all data
-        for category in data :
-         self.comboBox_3.addItem(str(category[0]))
-        
-        nom = self.lineEdit_4.text()
-        details = self.plainTextEdit.toPlainText()
-        prix_achat = self.doubleSpinBox.value()
-        prix_vente = self.doubleSpinBox_2.value()
-        quantite = self.spinBox.value()
-        code  = self.lineEdit_7.text()
-        categorie = self.comboBox_3.currentText()
-        date = datetime.datetime.now()
-        teaux  = self.lineEdit_9.text()
-        
-        self.cur.execute(('''INSERT INTO Produit(nom , details , prix_achat , prix_vente ,quantite,code,date,categorie,Teaux)
-            VALUES (%s  , %s, %s ,   %s , %s , %s , %s, %s, %s   )
-          ''' )  , (nom,details,prix_achat,prix_vente,quantite,code[0:11],date,categorie,teaux))
-          
-        self.db.commit()      
-        self.statusBar().showMessage('Produit a été bien ajouter')
-        QMessageBox.information(self,'succes','Produit a été bien ajouter')
-        print('product success added')
-        self.show_produit()
-        
+
+            self.cur.execute(''' SELECT category_name from category''') #select all data 
+            data = self.cur.fetchall()#return all data
+            for category in data :
+             self.comboBox_3.addItem(str(category[0]))
+            
+            nom = self.lineEdit_4.text()
+            details = self.plainTextEdit.toPlainText()
+            prix_achat = self.doubleSpinBox.value()
+            prix_vente = self.doubleSpinBox_2.value()
+            quantite = self.spinBox.value()
+            code  = self.lineEdit_7.text()
+            categorie = self.comboBox_3.currentText()
+            date = datetime.datetime.now()
+            teaux  = self.lineEdit_9.text()
+            
+            self.cur.execute(('''INSERT INTO Produit(nom , details , prix_achat , prix_vente ,quantite,code,date,categorie,Teaux)
+                VALUES (%s  , %s, %s ,   %s , %s , %s , %s, %s, %s   )
+            ''' )  , (nom,details,prix_achat,prix_vente,quantite,code[0:11],date,categorie,teaux))
+
+            global userid
+            action = 3
+            table = 6
+            
+            dat3 = datetime.datetime.utcnow()
+            
+            self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                VALUES (%s, %s , %s, %s )
+            ''' )  , (userid,action,table,dat3))            
+            
+            
+            
+            self.db.commit()      
+            self.statusBar().showMessage('Produit a été bien ajouter')
+            QMessageBox.information(self,'Succes','Produit a été bien ajouter')
+            print('product success added')
+            self.tableWidget_2.clear()
+            self.tableWidget_4.clear()
+            self.show_historique()
+            self.show_produit()
+                   
     def supprimer_produit(self):
         
         nom = self.lineEdit_10.text()
         delete_message = QMessageBox.warning(self ,"Produit supprimé" , "Vous etes sur !!",QMessageBox.Yes | QMessageBox.No )
         if delete_message == QMessageBox.Yes :
-         sql = (''' DELETE from Produit where nom=%s
-               ''')
-         self.cur.execute(sql,[(nom)])
-         self.db.commit()
-         
-         self.lineEdit_11.clear()
-         self.lineEdit_10.clear()
-         self.plainTextEdit_2.clear()
-         self.doubleSpinBox_3.clear()
-         self.doubleSpinBox_4.clear()
-         self.spinBox_2.clear()
-         self.lineEdit_12.clear()
+            sql = (''' DELETE from Produit where nom=%s
+                ''')
+            self.cur.execute(sql,[(nom)])
             
+            global userid
+            action = 5
+            table = 6
+            dat3 = datetime.datetime.utcnow()
+            self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                VALUES (%s, %s , %s, %s )
+            ''' )  , (userid,action,table,dat3))    
+            
+            self.db.commit()
+            
+            self.lineEdit_11.clear()
+            self.lineEdit_10.clear()
+            self.plainTextEdit_2.clear()
+            self.doubleSpinBox_3.clear()
+            self.doubleSpinBox_4.clear()
+            self.spinBox_2.clear()
+            self.lineEdit_12.clear()
+        self.tableWidget_4.clear()
+        self.show_historique()            
+        self.tableWidget_2.clear()
+        self.show_produit() 
+                
     def modifie_produit(self):
-        nome = self.lineEdit_11.text()
-        details = self.plainTextEdit_2.toPlainText()
-        prix_achat = self.doubleSpinBox_3.value()
-        prix_vente = self.doubleSpinBox_4.value()
-        quantite = self.spinBox_2.value()
-        code = self.lineEdit_12.text()
-        categorie = self.comboBox_15.currentText()
-        
-        self.cur.execute('''
-            UPDATE Produit SET nom = %s ,details = %s , prix_achat = %s , prix_vente = %s , quantite = %s , code = %s , categorie = %s WHERE code = %s
-        ''',(nome,details,prix_achat,prix_vente,quantite,code,categorie,code))      
-        
-        self.db.commit()
-        
-        QMessageBox.information(self,'succes','Produit a été bien modifer')
-        
-        self.show_produit()
+        try :
+            nome = self.lineEdit_11.text()
+            details = self.plainTextEdit_2.toPlainText()
+            prix_achat = self.doubleSpinBox_3.value()
+            prix_vente = self.doubleSpinBox_4.value()
+            quantite = self.spinBox_2.value()
+            code = self.lineEdit_12.text()
+            categorie = self.comboBox_15.currentText()
+            
+            self.cur.execute('''
+                UPDATE Produit SET nom = %s ,details = %s , prix_achat = %s , prix_vente = %s , quantite = %s , code = %s , categorie = %s WHERE code = %s
+            ''',(nome,details,prix_achat,prix_vente,quantite,code,categorie,code))      
+                        
+            global userid
+            action = 4
+            table = 6
+            dat3 = datetime.datetime.utcnow()
+            self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                VALUES (%s, %s , %s, %s )
+            ''' )  , (userid,action,table,dat3))    
+            
+            self.db.commit()
+            print(userid)
+            QMessageBox.information(self,'succes','Produit a été bien modifer')
+            
+            self.tableWidget_2.clear()
+            self.tableWidget_4.clear()
+            self.show_historique()
+            self.show_produit()
+        except :
+            QMessageBox.warning(self,'Erreur','No modification')
    
     def rechechre_stock(self):
             
@@ -348,46 +493,6 @@ class main(QMainWindow,MainUI):################ handle interface
                     col += 1
             row_position = self.tableWidget_2.rowCount()
             self.tableWidget_2.insertRow(row_position) 
-    
-    def search_produit_code(self):
-        
-        nom = self.lineEdit_5.text()
-        
-        if len(nom)  :
-         sql = ''' SELECT code,nom,prix_achat,prix_vente,quantite,details,categorie,Teaux from Produit WHERE code = %s 
-              '''
-         self.cur.execute(sql ,[(nom),])
-         data = self.cur.fetchall()
-         self.tableWidget_2.setRowCount(0)
-         self.tableWidget_2.insertRow(0)
-        
-         for row , form in enumerate(data):
-            for col , item in enumerate(form):
-                   
-                    self.tableWidget_2.setItem(row, col, QTableWidgetItem(str(item)))
-                    col += 1
-            row_position = self.tableWidget_2.rowCount()
-            self.tableWidget_2.insertRow(row_position)
-            
-    def search_produit_categorie(self):
-        
-        nom = self.lineEdit_8.text()
-        
-        if len(nom)  :
-         sql = ''' SELECT code,nom,prix_achat,prix_vente,quantite,details,categorie,Teaux from Produit WHERE categorie = %s 
-              '''
-         self.cur.execute(sql ,[(nom),])
-         data = self.cur.fetchall()
-         self.tableWidget_2.setRowCount(0)
-         self.tableWidget_2.insertRow(0)
-        
-         for row , form in enumerate(data):
-            for col , item in enumerate(form):
-                   
-                    self.tableWidget_2.setItem(row, col, QTableWidgetItem(str(item)))
-                    col += 1
-            row_position = self.tableWidget_2.rowCount()
-            self.tableWidget_2.insertRow(row_position)                  
                              
     def employe(self):
         nom = self.lineEdit_45.text()
@@ -399,17 +504,28 @@ class main(QMainWindow,MainUI):################ handle interface
         if password == password2 : 
          sql = self.cur.execute(''' insert into users(nom,email,phone,password,password2,date) values (%s,%s,%s,%s,%s,%s)
                                ''',(nom,email,phone,password,password2,date))
-         self.db.commit()
         
+         global userid
+         action = 3
+         table = 7
+         dat3 = datetime.datetime.utcnow()
+         self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                VALUES (%s, %s , %s, %s )
+            ''' )  , (userid,action,table,dat3))            
+            
+         self.db.commit()
+         
          QMessageBox.information(self,'success','user a été ajouté')
          print('user a été ajouté')
         else : 
          QMessageBox.warning(self,'failes','password not much')
          
     def supprimer_row(self):
-        
-        row_selected= self.tableWidget.currentRow()
-        self.tableWidget.removeRow(row_selected)
+            if self.tableWidget.rowCount() == 0 :
+                QMessageBox.information(self ,"information" , "table deja vide")
+            else :          
+                row_selected= self.tableWidget.currentRow()
+                self.tableWidget.removeRow(row_selected)
                              
     def copy_row(self):
         
@@ -419,19 +535,20 @@ class main(QMainWindow,MainUI):################ handle interface
                     res= it.text()
                     par=int(res)
                     print(res)
-                if res != '0' :
-                    row= self.tableWidget_6.currentRow() 
-                    targetRow = self.tableWidget.rowCount()
-                    self.tableWidget.insertRow(targetRow)
-                    for column in range(self.tableWidget_6.columnCount()):
-                        self.tableWidget.selectRow(row) 
-                        item = self.tableWidget_6.takeItem(row, column)
-                    
-                        self.tableWidget.setItem(targetRow, column, item)
-                        self.tableWidget.setItem(targetRow, 3, QTableWidgetItem('1'))                    
-                    
-                else :         
-                    QMessageBox.warning(self,'warning','Quantity limite')
+                    if res != '0' :
+                        row= self.tableWidget_6.currentRow() 
+                        targetRow = self.tableWidget.rowCount()
+                        self.tableWidget.insertRow(targetRow)
+                        for column in range(self.tableWidget_6.columnCount()):
+                            self.tableWidget.selectRow(row) 
+                            item = self.tableWidget_6.takeItem(row, column)
+                        
+                            self.tableWidget.setItem(targetRow, column, item)
+                            self.tableWidget.setItem(targetRow, 3, QTableWidgetItem('1'))                    
+                    elif res == '' :    
+                        pass
+                    else :         
+                        QMessageBox.warning(self,'warning','Quantité limite')
 
     def calcul(self):
         nrows = self.tableWidget.rowCount()
@@ -459,11 +576,14 @@ class main(QMainWindow,MainUI):################ handle interface
         self.lineEdit_9.setText(val + '%')
         
     def annuler_payment(self) :
-         delete_message = QMessageBox.warning(self ,"Annuler payement" , "Vous etes sur !!",QMessageBox.Yes | QMessageBox.No )
-         if delete_message == QMessageBox.Yes :
-             self.tableWidget.setRowCount(0)
-             self.lineEdit_6.setText("0") 
-    
+            if self.tableWidget.rowCount() == 0 :
+                QMessageBox.information(self ,"information" , "table deja vide")
+            else :     
+                delete_message = QMessageBox.warning(self ,"Annuler payement" , "Vous etes sur !!",QMessageBox.Yes | QMessageBox.No )
+                if delete_message == QMessageBox.Yes :
+                    self.tableWidget.setRowCount(0)
+                    self.lineEdit_6.setText("0") 
+            
     def verifier_user(self) : 
         nom=self.lineEdit_30.text() 
         password=self.lineEdit_29.text()
@@ -484,8 +604,19 @@ class main(QMainWindow,MainUI):################ handle interface
         telephone=self.lineEdit_32.text()  
         self.cur.execute('''
              UPDATE users SET nom = %s ,email = %s , phone = %s WHERE nom = %s
-               ''',(nom,email,telephone,nom))      
+               ''',(nom,email,telephone,nom))   
+                    
+        global userid
+        action = 4
+        table = 7
+        dat3 = datetime.datetime.utcnow()
+        self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+            VALUES (%s, %s , %s, %s )
+        ''' )  , (userid,action,table,dat3))    
+            
         self.db.commit()
+        self.tableWidget_4.clear()
+        self.show_historique()        
                      
     def show_users(self):
              
@@ -507,42 +638,62 @@ class main(QMainWindow,MainUI):################ handle interface
         for it in data :
          self.comboBox.addItem(it[0])
     
-    # def user_login(self):
-    #     username=self.lineEdit_22.text()
-    #     password=self.lineEdit_23.text()
-    #     self.cur.execute(""" SELECT id , nom , password FROM users""")
-    #     data_ = self.cur.fetchall()
-    #     print(data_)
-    #     for row in data_ :
-    #          if row[1] == username and row[2] == password :
-    #             print(row)
+    def user_login(self):
+            username=self.lineEdit_22.text()
+            password=self.lineEdit_23.text()
+            self.cur.execute(""" SELECT id , nom , password FROM users""")
+            data_ = self.cur.fetchall()
+            for row in data_ :
                 
-                
-    #             self.cur.execute('''
-    #                 SELECT * FROM permission WHERE emp_name = %s
-    #             ''',(username,))
-    #             user_permissions = self.cur.fetchone()
-    #             print(user_permissions)
-    #             if user_permissions[1] == 1 :
-    #                 self.pushButton.setEnabled(True)
+                if username=='' or password=='' :
+                    self.label_45.setText('Veuillez remplir tous les champs ')
+                     
+                elif row[1] == username and row[2] == password :
+                   
+                    global userid 
+                    userid = row[0]
                     
-    #             if user_permissions[2] == 1 :
-    #                 self.pushButton_2.setEnabled(True)
+                    self.cur.execute('''
+                        SELECT * FROM permission WHERE emp_name = %s
+                    ''',(username,))
+                    user_permissions = self.cur.fetchone()
+                  
+                    try:
+                        if user_permissions[1] == 1 :
+                            self.pushButton.setEnabled(True)   
+                        if user_permissions[2] == 1 :
+                            self.pushButton_2.setEnabled(True)    
 
-    #             if user_permissions[3] == 1 :
-    #                 self.pushButton_3.setEnabled(True)
+                        if user_permissions[3] == 1 :
+                            self.pushButton_3.setEnabled(True)    
 
-    #             if user_permissions[4] == 1 :
-    #                 self.pushButton_4.setEnabled(True)
+                        if user_permissions[4] == 1 :
+                            self.pushButton_4.setEnabled(True)   
 
-    #             if user_permissions[5] == 1 :
-    #                 self.pushButton_5.setEnabled(True)
+                        if user_permissions[5] == 1 :
+                            self.pushButton_5.setEnabled(True)
+                            
+                        if user_permissions[6] == 1 :
+                            self.pushButton_6.setEnabled(True)
+                            
+                        if user_permissions[7] == 1 :
+                            self.pushButton_19.setEnabled(True)
+                    except :
+                        QMessageBox.warning(self,'warning','Ce utilisateur na aucun droit pour y acceder le systeme ')    
+                        self.label_45.setText('Admin autoriser de vous donnée acess') 
 
-    #             if user_permissions[6] == 1 :
-    #                 self.pushButton_6.setEnabled(True)
-
-    #             if user_permissions[7] == 1 :
-    #                 self.pushButton_19.setEnabled(True)
+                    
+                    action = 1
+                    table = 7
+                    dat3 = datetime.datetime.utcnow()
+                    self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                        VALUES (%s, %s , %s, %s )
+                    ''' )  , (userid,action,table,dat3))   
+                    self.db.commit()
+                    
+                    self.tableWidget_4.clear()
+                    self.show_historique()
+                    self.label_45.setText('Connecter') 
                     
     def permission(self):
      emp_name=self.comboBox.currentText()    
@@ -552,7 +703,14 @@ class main(QMainWindow,MainUI):################ handle interface
             
             self.cur.execute(''' INSERT INTO `permission` (ventetab,produittab,clientstab,dashtab,reporttab,partab,histab,voir_pro_tab,ajou_pro_tab,modi_pro_tab,voir_cli_tab,ajou_cli_tab,modi_cli_tab,ajou_emp_tab,mod_emp_tab,perm_tab,is_admin,emp_name)
                             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                        ''',(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,emp_name) )    
+                        ''',(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,emp_name) )   
+            global userid
+            action = 7
+            table = 7
+            dat3 = datetime.datetime.utcnow()
+            self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                VALUES (%s, %s , %s, %s )
+             ''' )  , (userid,action,table,dat3))   
             self.db.commit()
             QMessageBox.information(self,'Succes','Privilége admin a été attribué avec success : \n \n' + emp_name)
             emp_name = self.comboBox.setCurrentIndex(0) 
@@ -659,12 +817,13 @@ class main(QMainWindow,MainUI):################ handle interface
          self.comboBox_8.addItem(row[1]) 
          
     def total(self):
-        self.cur.execute(''' SELECT sum(prix_achat),sum(prix_vente*quantite),Teaux FROM produit
+        self.cur.execute(''' SELECT sum(prix_achat*quantite) as sum1 ,sum(prix_vente*quantite),(sum(prix_vente*quantite))-(sum(prix_achat*quantite))  FROM produit
                          ''')    
         data = self.cur.fetchall()
         for row in data : 
          self.lineEdit_69.setText(str(row[0]))
          self.lineEdit_70.setText(str(row[1]))
+         self.lineEdit_71.setText(str(row[2]))
   
     def search_insert_by_code (self):
         
@@ -673,7 +832,6 @@ class main(QMainWindow,MainUI):################ handle interface
               '''
         self.cur.execute(sql ,[(code)])
         data = self.cur.fetchall()
-
          
         self.tableWidget.insertRow(0)
         for row , form in enumerate(data):
@@ -684,6 +842,7 @@ class main(QMainWindow,MainUI):################ handle interface
             self.tableWidget.setItem(row, 3, QTableWidgetItem('1'))
   
     def vente(self):
+        
         
         self.tableWidget.insertRow(0)
         for row1 in range(self.tableWidget.rowCount()):
@@ -701,26 +860,218 @@ class main(QMainWindow,MainUI):################ handle interface
         self.w.close()
         self.tableWidget.setRowCount(0)
         self.lineEdit_6.setText("0") 
-        
-  # m table comparer nom       
-        # col = 3
-        # data = []
-        # rows = self.tableWidget.rowCount()
-        # for row in range(rows):
-        #     it = self.tableWidget.item(row, col)
-        #     text = it.text() if it is not None else ""
-        #     data.append(text)
-        # print(data)
-        
-        
-        pass     
-########## ######################### button open tab
-        
-        
-if __name__ == '__main__':
+        self.tableWidget_2.clear()
+        self.show_produit()
+        self.tableWidget_5.clear()
+        self.display_recette()
+      
+    def show_historique (self ):
+         
+        self.cur.execute(''' SELECT users_id , his_action ,his_table , his_date from historique ''')
+        data=self.cur.fetchall()
+         
+        for row , form in enumerate(data):
+            self.tableWidget_4.insertRow(row)
+            for col , item in enumerate(form):
+   
+                if col == 0 :
+                    
+                 sql = (''' SELECT nom FROM users WHERE id = %s ''')
+                 self.cur.execute(sql , [(item)])
+                 te = self.cur.fetchone()
+              
+                 result = te[0]
+                 self.tableWidget_4.setItem(row,col, QTableWidgetItem(result))
+      
+                elif col == 1 :
+                    action = ' '
+                    if item == 1 :
+                        action = 'Connecté'
+
+                    if item == 2 :
+                        action = 'Deconnecté'
+
+                    if item == 3 :
+                        action = 'Ajouter'
+
+                    if item == 4 :
+                        action = 'Modifier'
+
+                    if item == 5 :
+                        action = 'Supprimer'
+
+                    if item == 6 :
+                        action = 'Rechercher'
+                        
+                    if item == 7 :
+                        action = 'Ajouter Permission '     
+                        
+                        
+                    self.tableWidget_4.setItem(row,col, QTableWidgetItem(str(action)))
+                    
+                    
+                elif col == 2 :
+                    Table = ' '
+                    if item == 1 :
+                        Table = 'Achats'
+
+                    if item == 2 :
+                        Table = 'Categorie'
+
+                    if item == 3 :
+                        Table = 'Client'
+
+                    if item == 4 :
+                        Table = 'Historique'
+
+                    if item == 5 :
+                        Table = 'Permission'
+
+                    if item == 6 :
+                        Table = 'Produit'
+                        
+                    if item == 7 :
+                        Table = 'Utilisateur'
     
+                    self.tableWidget_4.setItem(row,col, QTableWidgetItem(str(Table)))    
+                    
+                else  :
 
+                 self.tableWidget_4.setItem(row,col, QTableWidgetItem(str(item)))   
+                col = col + 1
+    
+    def delete_historique(self):
+       
+     
+       delete_message = QMessageBox.warning(self,'Attention','Tous historique sera supprimer',QMessageBox.Yes | QMessageBox.No)  
+       if delete_message == QMessageBox.Yes :
+            self.cur.execute(''' TRUNCATE TABLE historique
+                            ''')  
+           
+            action = 5
+            table = 4
+            dat3 = datetime.datetime.utcnow()
+            self.cur.execute(('''INSERT INTO historique(users_id , his_action ,his_table , his_date)
+                VALUES (%s, %s , %s, %s )
+            ''' )  , (userid,action,table,dat3))   
 
+            self.db.commit()
+            self.tableWidget_4.clear()
+            self.show_historique()
+       
+    def search_historique(self):
+        pass   
+
+    def dashboard(self):
+
+        
+        filter_date = self.dateEdit.date()
+        filter_date = filter_date.toPyDate()
+        year = str(filter_date).split('-')[0]
+       
+        self.cur.execute(""" 
+            SELECT COUNT(id), EXTRACT(day FROM date) as day
+            FROM vente
+            GROUP BY day
+        """ )
+        data = self.cur.fetchall()
+        
+        vente_count = []
+        date_count = []
+        
+        for row in data:
+                vente_count.append(row[0])
+                date_count.append(row[1])#we appen data to liset bcz the chart accept only data in list
+                
+        barchart = pg.BarGraphItem(x=date_count , height=vente_count , width=.2)
+        
+        self.widget.addItem(barchart)             
+        pen = pg.mkPen(color = (165, 120, 255),size = 130)
+        self.widget.setBackground('w')
+        self.widget.setTitle('Statistique de vente dans dernier 30 jours', Size = 50 , color = 'Blue')
+        self.widget.showGrid(x=True,y=True)
+        self.widget.addLegend()
+        self.widget.setLabel('left','vente',color='Blue',size = 130)
+        self.widget.setLabel('bottom','30 jours',color='Blue',size = 130)
+
+    def recette (self):
+        total = self.w.lineEdit_6.text()    
+       
+        date = datetime.datetime.now()
+        self.cur.execute('''
+            INSERT INTO vente (total_vente,date)
+            VALUES (%s ,%s)
+         ''' , (total,date))
+        self.db.commit()
+        print('done')
+     
+    def display_recette(self):
+        
+        self.cur.execute(''' 
+                            SELECT cast(date as date) as stat_day, SUM(total_vente)
+                            from vente
+                            GROUP BY cast(date as date)
+                            order by date
+               ''')
+        data=self.cur.fetchall()
+        print(data)
+        for row , item in enumerate(data) :
+            self.tableWidget_5.insertRow(row)
+            for col , form in enumerate(item):
+                self.tableWidget_5.setItem(row,col, QTableWidgetItem(str(form)))
+        
+    def filter(self, filter_text):
+        
+        for i in range(self.tableWidget_2.rowCount()):
+            for j in range(self.tableWidget_2.columnCount()):
+                item = self.tableWidget_2.item(i, j)
+                match = filter_text.lower() not in item.text().lower()
+                self.tableWidget_2.setRowHidden(i, match)
+                if not match:
+                    break
+
+    def export_data(self):
+        ## export produit data to excel file
+        self.cur.execute('''
+            SELECT code , nom , categorie , prix_achat , prix_vente , date FROM produit
+        ''')
+
+        data = self.cur.fetchall()
+        excel_file = Workbook('produit_rap.ods')
+        sheet1 = excel_file.add_worksheet()
+
+        sheet1.write(0,0,'Code produit')
+        sheet1.write(0,1,'Nom produit')
+        sheet1.write(0,2,'Categorie')
+        sheet1.write(0,3,'Pix achat')
+        sheet1.write(0,4,'Prix de vente')
+        sheet1.write(0,5,'Date')
+      
+        row_number = 1
+        for row in data :
+            column_number = 0
+            for item in row :
+                sheet1.write(row_number,column_number,str(item))
+                column_number += 1
+            row_number += 1
+
+        excel_file.close()
+        QMessageBox.information(self,'information','Rapport exporté avec success')
+
+########## ######################### button open tab
+    
+    
+    
+    def toggleFullScreen(self):
+        
+        if self.isFullScreen():
+            self.showNormal()
+            self.pushButton_45.setText('Mode plein ecran')
+        else:
+            self.pushButton_45.setText('Quitter plein ecran')
+            self.showFullScreen()   
+            
+if __name__ == '__main__':
     
     import sys
     app = QtWidgets.QApplication(sys.argv)
@@ -728,8 +1079,10 @@ if __name__ == '__main__':
     w.show()
     sys.exit(app.exec_())
     
-  
-  
+           
+
+    
+       
   
   
   # def handle_item_changed(self):
