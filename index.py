@@ -21,7 +21,7 @@ class main(QMainWindow,MainUI):################ handle interface
         
     def ok_button(self):### call window of payement 
         if self.tableWidget.rowCount() == 0 :
-            QMessageBox.information(self ,"information" , "table deja vide")
+            QMessageBox.information(self ,"information" , "table de vente deja vide")
         else :  
             self.pushButton_13.clicked.connect(self.calcul)
             self.w = Window2()
@@ -823,7 +823,6 @@ class main(QMainWindow,MainUI):################ handle interface
         for row in data : 
          self.lineEdit_69.setText(str(row[0]))
          self.lineEdit_70.setText(str(row[1]))
-         self.lineEdit_71.setText(str(row[2]))
   
     def search_insert_by_code (self):
         
@@ -832,14 +831,17 @@ class main(QMainWindow,MainUI):################ handle interface
               '''
         self.cur.execute(sql ,[(code)])
         data = self.cur.fetchall()
-         
-        self.tableWidget.insertRow(0)
-        for row , form in enumerate(data):
-            for col , item in enumerate(form):
-                    self.tableWidget.setItem(row, col, QTableWidgetItem(str(item)))
-                    col += 1
-            
-            self.tableWidget.setItem(row, 3, QTableWidgetItem('1'))
+        
+        for quantite in data :
+            if quantite[3] == 0 :
+                QMessageBox.warning(self,'Attention','Le stocke de ' + quantite[1] + ' est vide')
+            else :
+                self.tableWidget.insertRow(0)  
+                for row , form in enumerate(data):
+                    for col , item in enumerate(form):
+                            self.tableWidget.setItem(row, col, QTableWidgetItem(str(item)))
+                            col += 1
+                    self.tableWidget.setItem(row, 3, QTableWidgetItem('1'))
   
     def vente(self):
         
@@ -1058,6 +1060,10 @@ class main(QMainWindow,MainUI):################ handle interface
         excel_file.close()
         QMessageBox.information(self,'information','Rapport exporté avec success')
 
+    def client(self):
+        pass
+
+
 ########## ######################### button open tab
     
     
@@ -1065,9 +1071,15 @@ class main(QMainWindow,MainUI):################ handle interface
     def toggleFullScreen(self):
         
         if self.isFullScreen():
+            self.groupBox_8.show()
+            
             self.showNormal()
             self.pushButton_45.setText('Mode plein ecran')
+            
         else:
+
+            self.groupBox_8.hide()
+            
             self.pushButton_45.setText('Quitter plein ecran')
             self.showFullScreen()   
             
