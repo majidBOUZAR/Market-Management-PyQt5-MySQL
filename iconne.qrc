@@ -23,5 +23,20 @@
     <file>icone\stock.png</file>
     <file>icone\imprimer.png</file>
     <file>icone\reset.png</file>
+
+    <file>icone\insta.png</file>
+    <file>icone\in.png</file>
+    <file>icone\face.png</file>
+    <file>icone\github.png</file>
+    <file>icone\login_side.png</file>
+
+    <file>icone\user.png</file>
+    <file>icone\uss.png</file>
+    <file>icone\pass.png</file>
+    <file>icone\pass.jpg</file>
+    <file>icone\market.png</file>
+
+#pyrcc5 iconne.qrc -o iconne_rc.py
+
 </qresource>
 </RCC>

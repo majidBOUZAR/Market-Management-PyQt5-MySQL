@@ -12,6 +12,10 @@ from index import *
 
 MainUI2,_=loadUiType('login.ui') 
 
+user_profile = []
+userid =  0
+
+
 
 class Window3(QMainWindow,MainUI2):################ handle interface
     def __init__(self, parent=None):
@@ -20,6 +24,8 @@ class Window3(QMainWindow,MainUI2):################ handle interface
         self.setupUi(self)
         self.connect_button()
         self.db_connection()
+     
+        
         
     def connect_button (self):   
         self.pushButton_27.clicked.connect(self.user_login)  
@@ -32,28 +38,28 @@ class Window3(QMainWindow,MainUI2):################ handle interface
                         password="root"
                         )
      self.cur = self.db.cursor()
-     
-    def user_login(self):
+
         
+    def user_login(self):
+
+
+
         username=self.lineEdit_22.text()
         password=self.lineEdit_23.text()
         
-        self.cur.execute(""" SELECT id , nom , password FROM users""")
+        sql = self.cur.execute(""" SELECT nom , password , id FROM users""")
         data_ = self.cur.fetchall()
         for row in data_ :
-            if username=='' or password=='' :
-                self.label_25.setText('Veuillez remplir tous les champs ')
-                
-            elif row[1] == username and row[2] == password :
-                
-                global userid
-                
-                userid = row[0]
-                print(userid)
+            if row[0] == username and row[1] == password :
+               
+ 
                 self.ind= main()
                 self.ind.show()
                 w.close()
-                QApplication.processEvents()
+                
+                self.uid=row [2]
+                print(self.uid)
+                
                 
                 self.cur.execute('''
                     SELECT * FROM permission WHERE emp_name = %s
@@ -92,14 +98,15 @@ class Window3(QMainWindow,MainUI2):################ handle interface
                 self.db.commit()
                 self.ind.tableWidget_4.clear()
                 self.ind.show_historique()    
-                   
-            else :
-                self.label_25.setText('Username ou mot de passe invalide !')
-        return userid
+       
+      
+    
 if __name__ == '__main__':
     
     import sys
     app = QtWidgets.QApplication(sys.argv)
+ 
+    
     w = Window3()
     w.show()
     sys.exit(app.exec_())
