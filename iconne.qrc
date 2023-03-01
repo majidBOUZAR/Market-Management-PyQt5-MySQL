@@ -35,6 +35,8 @@
     <file>icone\pass.png</file>
     <file>icone\pass.jpg</file>
     <file>icone\market.png</file>
+    <file>icone\menu.png</file>
+    <file>icone\neg.png</file>
 
 #pyrcc5 iconne.qrc -o iconne_rc.py
 

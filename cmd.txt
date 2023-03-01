@@ -1,0 +1,5 @@
+pyuic5 info_prod.ui -o info_prod.py 
+pyrcc5 iconne.qrc -o iconne_rc.py
+
+
+
